@@ -1,0 +1,66 @@
+
+--
+-- DO NOT CHANGE THE CODE IN THIS FILE, EXCEPT THE LINES BETWEEN @TODO_START and @TODO_END
+--
+
+BROKER SCHEMA com.bmw.il.nodes
+DECLARE ns1 NAMESPACE 'http://calms.wcg.com/wcgtypes/GCAP';
+/*
+ * Prepare IL message Header.
+ */
+CREATE COMPUTE MODULE PrepareILHeaderRequestCallbackNode
+	CREATE FUNCTION Main() RETURNS BOOLEAN
+	BEGIN
+		-- copy local environment
+		SET OutputLocalEnvironment = InputLocalEnvironment;
+		
+		-- create structure to pass parameters with
+		DECLARE header ROW; 
+		
+		--
+		-- @TODO_START
+		--
+		
+		-- set correlation id from request or create unique ID
+		--  Adapt this code for this specific consumer component. This is just an example which MUST be adapted. 
+		--SET header.correlationID = InputRoot.XMLNSC.*:request.*:requestId;
+		SET header.correlationID = InputRoot.SOAP.Body.*:creditCheckRequest.proposal.proposalId;
+		-- use the following code snippet if the consumer does not provide a proper ID and set it to a generated, unique ID
+		-- SET header.correlationID = UUIDASCHAR;
+		-- set global correlation id from request, or omit it, if no such value can be provided. In the latter case, set the value to NULL
+		--  Adapt this code for this specific consumer component. This is just an example which MUST be adapted. 
+		SET header.globalCorrelationID = InputRoot.SOAP.Body.*:creditCheckRequest.proposal.proposalId;
+	
+		-- set tenant to correct value, either from the request or from configuration if this is static
+		--  Adapt this code for this specific consumer component. This is just an example which MUST be adapted. 	
+		SET header.tenant = 'IT';
+
+		-- 
+		-- @TODO_END
+		--
+
+		-- set message exchange pattern to correct value for this operation
+		SET header.messageExchangePattern = 'REQUEST_CALLBACK';
+
+		-- create IL message header
+		CALL com.bmw.il.functions.SetILMessageHeader(OutputLocalEnvironment, header);
+		
+		--
+		-- @TODO_START
+		--
+	
+		--  
+		--  Adapt this code for this specific consumer component. This is just an example which works for HTTP, which MUST be verified and adapted if required
+		-- Save the invocation context in the IL header, in order to have that in the response flow 
+		IF InputLocalEnvironment.Destination.HTTP.RequestIdentifier IS NOT NULL THEN
+			DECLARE encoded CHARACTER BASE64ENCODE(InputLocalEnvironment.Destination.HTTP.RequestIdentifier);
+			CALL com.bmw.il.functions.SaveReplyStateToILHeader(OutputLocalEnvironment, CC_CONTEXT_KEY, encoded);
+		END IF;
+		
+		-- 
+		-- @TODO_END
+		--		
+	
+		RETURN TRUE;
+	END;
+END MODULE;
