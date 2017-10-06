@@ -1,0 +1,58 @@
+
+--
+-- DO NOT CHANGE THE CODE IN THIS FILE, EXCEPT THE LINES BETWEEN @TODO_START and @TODO_END
+--
+
+BROKER SCHEMA com.bmw.il.nodes
+/**
+* The purpose of this node is to configure the local environment correctly according to the
+* output node that is used to communicate with the provider.
+*/
+
+PATH com.bmw.il.functions;
+CREATE COMPUTE MODULE OutputNodeConfigurationNode
+	CREATE FUNCTION Main() RETURNS BOOLEAN
+	BEGIN
+		-- copy local environment. InputRoot is not created since
+		SET OutputLocalEnvironment = InputLocalEnvironment;
+		-- declare variables
+		DECLARE protocol CHARACTER OutputLocalEnvironment.IL.Protocol;
+		DECLARE endpoint CHARACTER OutputLocalEnvironment.IL.Endpoint;
+
+		DECLARE CALMS_User CHARACTER '';
+		DECLARE CALMS_Password CHARACTER '';		
+		-- The common library already supports the configuration
+		-- for some nodes, such as nodes with protocol as HTTP, SOAP, WMQ, FILE (with local file, ftp and sftp). If you
+		-- use other nodes than these, you need to implement the configuration on your own. Please provide the
+		-- implementation to the IL team, so that they can include this in the common library.
+		--
+		-- @TODO_START
+		--
+		-- Comment below line for local testing
+		CALL getUserDefinedCredentials(CredentialIdentifier, CredentialAppKey, CALMS_User, CALMS_Password);
+		-- Send BASE64 encodede userd id and password to CALMS.
+		-- Something like 'Basic cXFwcm4xMDp2ZXJ0cmFnMQ==' for qqprn10:vertrag1 userid and password combination.
+		-- ###########To be removed while deploying to server################ --
+		-- This block is for local testing
+		--DECLARE securityBase64Encoded CHAR '';
+		-- SET securityBase64Encoded = 'UVFURkVFMDo4ZXdpcnRlbg==';
+		-- ########################### --
+		DECLARE securityBase64Encoded CHAR BASE64ENCODE(CALMS_User||':'||CALMS_Password);
+		SET OutputRoot.Properties = InputRoot.Properties;
+		SET OutputRoot.HTTPRequestHeader."Authorization" = 'Basic '||securityBase64Encoded;
+		SET OutputRoot.XMLNSC = InputRoot.XMLNSC;		
+		-- Include your configuration here and delete the invocation of the CommonLibrary function.
+		-- If you need no extra protocol, delete this comment
+		CALL com.bmw.il.functions.ConfigureOutputNode(protocol, endpoint, OutputLocalEnvironment);
+		--
+		-- @TODO_END
+		--
+		-- Add time measurement
+		CALL com.bmw.il.functions.AddTimestampToLE(OutputLocalEnvironment, 'CC_REQUEST_OUT');
+		-- Update monitor event with measured times
+		CALL com.bmw.il.functions.CalculateTiming(OutputLocalEnvironment);
+
+		RETURN TRUE;
+	END;
+
+END MODULE;
